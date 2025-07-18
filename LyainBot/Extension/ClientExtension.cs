@@ -1,15 +1,18 @@
 using LyainBot.Utils;
 using TL;
 using WTelegram;
+// ReSharper disable UnusedType.Global
 
 namespace LyainBot.Extension;
 
 public static class ClientExtension
 {
-    public static long MIN_CHANNEL_ID = -1002147483647;
-    public static long MAX_CHANNEL_ID = -1000000000000;
-    public static long MIN_CHAT_ID = -2147483647;
-    public static long MAX_USER_ID = 9999999999;
+    // ReSharper disable InconsistentNaming
+    private const long MIN_CHANNEL_ID = -1002147483647;
+    private const long MAX_CHANNEL_ID = -1000000000000;
+    private const long MIN_CHAT_ID = -2147483647;
+    private const long MAX_USER_ID = 9999999999;
+    // ReSharper restore InconsistentNaming
     
     public static async Task SendImageAsSticker(this Client client, string usernameOrId, byte[] imageData)
     {
