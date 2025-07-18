@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <PackageId>LyainBot</PackageId>
-        <Version>0.0.7</Version>
+        <Version>0.1.0</Version>
         <Authors>LyainTeam</Authors>
         <Description>A Telegram Userbot Framework written in C#</Description>
         <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
