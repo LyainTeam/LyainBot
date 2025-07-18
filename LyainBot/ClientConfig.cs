@@ -69,7 +69,7 @@ public class ClientConfig
                 Console.Write("Enter your 2fa password: ");
                 return Console.ReadLine()?.Trim();
             case "device_model":
-                return "Android 12";
+                return "Android";
             case "app_version":
                 return "11.13.0";
             case "system_version":

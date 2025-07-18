@@ -206,6 +206,7 @@ internal static class Program
                 packageName.Equals("system.security.permissions", StringComparison.OrdinalIgnoreCase) || 
                 packageName.Equals("system.security.principal.windows", StringComparison.OrdinalIgnoreCase) || 
                 packageName.Equals("wtelegramclient", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("sixlabors.imagesharp", StringComparison.OrdinalIgnoreCase) ||
                 packageName.StartsWith("nuget.protocol", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
