@@ -57,6 +57,8 @@ public class ClientConfig
             case "verification_code":
                 Console.Write("Enter the verification code you received: ");
                 return Console.ReadLine()?.Trim();
+            case "session_pathname":
+                return Path.Combine(Environment.CurrentDirectory, "WTelegram.session");
             case "first_name":
                 Console.Write("Enter your first name: ");
                 return Console.ReadLine()?.Trim();
