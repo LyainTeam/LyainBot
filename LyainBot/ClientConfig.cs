@@ -58,8 +58,7 @@ public class ClientConfig
                 Console.Write("Enter the verification code you received: ");
                 return Console.ReadLine()?.Trim();
             case "session_pathname":
-            // 将会话文件 (WTelegram.session) 保存在【当前工作目录】
-            return Path.Combine(Environment.CurrentDirectory, "WTelegram.session");
+                return Path.Combine(Environment.CurrentDirectory, "WTelegram.session");
             case "first_name":
                 Console.Write("Enter your first name: ");
                 return Console.ReadLine()?.Trim();
