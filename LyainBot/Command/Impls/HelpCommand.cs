@@ -11,13 +11,13 @@ public class HelpCommand : ICommand
     {
         if (args.Length == 0)
         {
-            string result = Program.CommandManager.GetAllCommandName().Aggregate("指令列表: \n", (current, se) => current + $"`{se}`, ");
+            string result = LyainBotApp.CommandManager.GetAllCommandName().Aggregate("指令列表: \n", (current, se) => current + $"`{se}`, ");
             result = result[..^2];
             message.Edit(result);
         }
         else
         {
-            CommandInfo? commandInfo = Program.CommandManager.TryGetCommandInfo(args[0]);
+            CommandInfo? commandInfo = LyainBotApp.CommandManager.TryGetCommandInfo(args[0]);
             string? aliases = commandInfo?.Aliases.Aggregate("", (current, alias) => current + (alias + ", "));
             message.Edit(commandInfo == null ? "Can't find target command." : $"Command: {commandInfo.Name}\nDescription: {commandInfo.Description}\nAliases: {aliases![..^2]}");
         }

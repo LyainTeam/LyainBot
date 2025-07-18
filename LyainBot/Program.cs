@@ -1,42 +1,64 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
+using Autofac;
 using TL;
 using LyainBot.Command;
+using LyainBot.Plugins;
 using WTelegram;
 
 namespace LyainBot;
 
-public static class Program
+internal static class Program
 {
-    public static Client Client;
-    public static UpdateManager UpdateManager;
-    public static EventHandler EventHandler;
-    public static CommandManager CommandManager;
-    public static ClientConfig ClientConfig;
-    public static User Me;
-    
     internal static async Task Main(string[] args)
     {
-        Helpers.Log = (l, s) => Debug.WriteLine(s);
-        ClientConfig = ClientConfig.GetConfig();
-        EventHandler = new EventHandler();
-        CommandManager = new CommandManager();
-        CommandManager.Init();
-        Client = new Client(ClientConfig.ConfigCallback);
-        if (ClientConfig.MTProxyUrl != null)
-        {
-            Client.MTProxyUrl = ClientConfig.MTProxyUrl;
-        }
-        Me = await Client.LoginUserIfNeeded();
-        Console.WriteLine($"Logged as user {Me.first_name}");
-        UpdateManager = Client.WithUpdateManager(OnUpdate);
-        Messages_Dialogs dialogs = await Client.Messages_GetAllDialogs();
-        await UpdateManager.LoadDialogs(dialogs);
-        Console.ReadKey();
-    }
+        await LyainBotApp.Init();
 
-    private static Task OnUpdate(Update update)
+        SharedData sharedData = new()
+        {
+            Client = LyainBotApp.Client,
+            UpdateManager = LyainBotApp.UpdateManager,
+            EventHandler = LyainBotApp.EventHandler,
+            CommandManager = LyainBotApp.CommandManager,
+            ClientConfig = LyainBotApp.ClientConfig,
+            Me = LyainBotApp.Me
+        };
+        
+        ContainerBuilder builder = new();
+        builder.RegisterInstance(sharedData).SingleInstance();
+
+        LoadPlugins(builder);
+        IContainer container = builder.Build();
+        IEnumerable<IPlugin> plugins = container.Resolve<IEnumerable<IPlugin>>();
+        
+        foreach (IPlugin plugin in plugins)
+        {
+            plugin.Load();
+        }
+
+        await LyainBotApp.Loop();
+        
+        foreach (IPlugin plugin in plugins)
+        {
+            plugin.Unload();
+        }
+    }
+    
+    private static void LoadPlugins(ContainerBuilder builder)
     {
-        EventHandler.CallEvent(update);
-        return Task.CompletedTask;
+        string pluginDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Plugins");
+        if (!Directory.Exists(pluginDirectory)) return;
+        string[] pluginFiles = Directory.GetFiles(pluginDirectory, "*.dll");
+        foreach (string file in pluginFiles)
+        {
+            Assembly assembly = Assembly.LoadFrom(file);
+            IEnumerable<Type> pluginTypes = assembly.GetTypes()
+                .Where(t => typeof(IPlugin).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+
+            foreach (Type type in pluginTypes)
+            {
+                builder.RegisterType(type).As<IPlugin>();
+            }
+        }
     }
 }

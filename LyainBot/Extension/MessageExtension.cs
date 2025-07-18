@@ -10,9 +10,9 @@ public static class MessageExtension
         InputPeer inputPeer = origin.Peer.ToInputPeer();
         if (entities == null && message != null)
         {
-            entities = Program.Client.MarkdownToEntities(ref message);
+            entities = LyainBotApp.Client.MarkdownToEntities(ref message);
         }
-        Task<UpdatesBase> task = Program.Client.Messages_EditMessage(
+        Task<UpdatesBase> task = LyainBotApp.Client.Messages_EditMessage(
             inputPeer,
             origin.id,
             message,

@@ -12,10 +12,10 @@ public class CommandManager
 
     public void Init()
     {
-        Program.EventHandler.OnUpdateNewMessage += message => HandleMessage(message.message);
-        Program.EventHandler.OnUpdateEditMessage += message => HandleMessage(message.message, true);
-        Program.EventHandler.OnUpdateNewChannelMessage += message => HandleMessage(message.message);
-        Program.EventHandler.OnUpdateEditChannelMessage += message => HandleMessage(message.message, true);
+        LyainBotApp.EventHandler.OnUpdateNewMessage += message => HandleMessage(message.message);
+        LyainBotApp.EventHandler.OnUpdateEditMessage += message => HandleMessage(message.message, true);
+        LyainBotApp.EventHandler.OnUpdateNewChannelMessage += message => HandleMessage(message.message);
+        LyainBotApp.EventHandler.OnUpdateEditChannelMessage += message => HandleMessage(message.message, true);
         RegisterCommand(new HelpCommand());
     }
 
@@ -26,16 +26,16 @@ public class CommandManager
 
         if (string.IsNullOrEmpty(message.message)) return;
         string messageString = message.message;
-        if (Program.ClientConfig.CommandPrefix == null)
+        if (LyainBotApp.ClientConfig.CommandPrefix == null)
         {
             Console.WriteLine("Warn: Invalid command prefix found.");
             return;
         }
 
-        if (!messageString.StartsWith(Program.ClientConfig.CommandPrefix)) return;
+        if (!messageString.StartsWith(LyainBotApp.ClientConfig.CommandPrefix)) return;
         string[] commandArgs = messageString.Split(" ").Select(arg => arg.Trim()).ToArray();
-        string commandName = commandArgs[0][Program.ClientConfig.CommandPrefix.Length..].Trim();
-        TryInvokeCommand(commandName, message, Program.UpdateManager, Program.Client, edit, commandArgs[1..]);
+        string commandName = commandArgs[0][LyainBotApp.ClientConfig.CommandPrefix.Length..].Trim();
+        TryInvokeCommand(commandName, message, LyainBotApp.UpdateManager, LyainBotApp.Client, edit, commandArgs[1..]);
     }
 
     public void RegisterCommand(ICommand command)
