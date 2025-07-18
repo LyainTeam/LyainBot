@@ -15,7 +15,7 @@ RUN dotnet build "LyainBot.csproj" -c Release -o /app/build
 
 # Publish the application
 FROM build AS publish
-RUN dotnet publish "LyainBot.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "LyainBot.csproj" -c Release -o /app/publish /p:UseAppHost=false /p:PublishSingleFile=true /p:PublishTrimmed=true
 
 # Use the official .NET Runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
@@ -25,4 +25,5 @@ WORKDIR /config
 COPY --from=publish /app/publish /app
 
 # Set the entry point for the application
-ENTRYPOINT ["dotnet", "/app/LyainBot.dll"]
+RUN chmod +x /app/LyainBot
+ENTRYPOINT ["/app/LyainBot"]
