@@ -2,3 +2,14 @@
 
 ---
 *Please notice that the avatar is not created by us. Origin: [Pixiv](https://www.pixiv.net/artworks/132481358)*
+
+
+## Docker Deployment
+
+- `docker run --rm -it -v ./config:/config ghcr.io/LyainTeam/LyainBot:latest`
+- Fill in AppId and AppHash in `./config/client_config.json` and save file.
+- Return to terminal, press Enter. Fill in phone number and Telegram login code.
+- Wait until log-in finished, then press Ctrl-c.
+- `docker run -d --name=lyainbot -v ./config:/config ghcr.io/LyainTeam/LyainBot:latest`
+
+
