@@ -27,6 +27,13 @@ internal static class Program
         ContainerBuilder builder = new();
         builder.RegisterInstance(sharedData).SingleInstance();
 
+        Console.CancelKeyPress += (sender, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            LyainBotApp.IsRunning = false;
+            Console.WriteLine("Shutting down...");
+        };
+
         LoadPlugins(builder);
         IContainer container = builder.Build();
         IEnumerable<IPlugin> plugins = container.Resolve<IEnumerable<IPlugin>>();

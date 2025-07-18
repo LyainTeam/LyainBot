@@ -1,0 +1,36 @@
+name: Publish NuGet Package
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '9.0.x'  # 根据您的项目需要调整版本
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Pack
+        run: dotnet pack --configuration Release --output ./nupkg
+
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}  # 使用 GitHub Secrets 存储 API 密钥
+        run: dotnet nuget push ./nupkg/*.nupkg --api-key $NUGET_API_KEY --source https://api.nuget.org/v3/index.json

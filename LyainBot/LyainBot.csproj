@@ -1,6 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <PackageId>LyainBot</PackageId>
+        <Version>0.0.3</Version>
+        <Authors>LyainTeam</Authors>
+        <Description>A Telegram Userbot Framework written in C#</Description>
+        <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/LyainTeam/LyainBot</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/LyainTeam/LyainBot</RepositoryUrl>
+        <PackageTags>telegram</PackageTags>
         <OutputType>Exe</OutputType>
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
