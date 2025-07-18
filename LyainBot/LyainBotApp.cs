@@ -39,7 +39,7 @@ public class LyainBotApp
     {
         while (IsRunning)
         {
-            await Task.Delay(100);
+            await Task.Delay(101);
         }
     }
 
