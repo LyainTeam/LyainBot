@@ -8,30 +8,56 @@ public static class MessageExtension
     public static UpdatesBase Edit(this Message origin, string? message = null, InputMedia? media = null, ReplyMarkup? replyMarkup = null, MessageEntity[]? entities = null, DateTime? scheduleDate = null, int? quickReplyShortcutId = null, bool noWebpage = false, bool invertMedia = false)
     {
         InputPeer inputPeer = origin.Peer.ToInputPeer();
-        if (entities == null && message != null)
+        try
         {
-            entities = LyainBotApp.Client.MarkdownToEntities(ref message);
+            Task<UpdatesBase> task = LyainBotApp.Client.Messages_EditMessage(
+                inputPeer,
+                origin.id,
+                message,
+                media,
+                replyMarkup,
+                entities,
+                scheduleDate,
+                quickReplyShortcutId,
+                noWebpage,
+                invertMedia
+            );
+            task.Wait();
+            return task.Result;
         }
-        Task<UpdatesBase> task = LyainBotApp.Client.Messages_EditMessage(
-            inputPeer,
-            origin.id,
-            message,
-            media,
-            replyMarkup,
-            entities,
-            scheduleDate,
-            quickReplyShortcutId,
-            noWebpage,
-            invertMedia
-        );
-        task.Wait();
-        return task.Result;
+        catch (Exception e)
+        {
+            if (!e.Message.Contains("MESSAGE_EDIT_TIME_EXPIRED")) throw;
+            Task<Message> task = LyainBotApp.Client.SendMessageAsync(origin.peer_id.ToInputPeer(), message, media, origin.id, entities);
+            task.Wait();
+            return new Updates();
+        }
     }
 
     public static async Task<ImageData> DownloadImageFromReply(this Message origin)
     {
         if (origin.reply_to is not MessageReplyHeader header) throw new ArgumentException("Message is not a reply to another message.", nameof(origin));
-        MessageMedia? media = header?.reply_media;
+        Message replyTo;
+        if (origin.peer_id is PeerChannel channel)
+        {
+            Messages_MessagesBase msgs = await LyainBotApp.Client.Channels_GetMessages(channel.ToInputPeer() as InputPeerChannel, new InputMessageID() { id = header.reply_to_msg_id });
+            if (msgs.Count == 0)
+            {
+                throw new ArgumentException("The replied message does not exist.", nameof(origin));
+            }
+            replyTo = msgs.Messages.First() as Message ?? throw new InvalidOperationException("The replied message is not a valid Message.");
+        }
+        else
+        {
+            Messages_MessagesBase msgs = await LyainBotApp.Client.Messages_GetMessages(new InputMessageReplyTo() { id = origin.id });
+            if (msgs.Count == 0)
+            {
+                throw new ArgumentException("The replied message does not exist.", nameof(origin));
+            }
+            replyTo = msgs.Messages.First() as Message ?? throw new InvalidOperationException("The replied message is not a valid Message.");
+        }
+        
+        MessageMedia? media = replyTo.media;
         if (media is not MessageMediaPhoto mphoto || mphoto.photo is PhotoEmpty)
         {
             // try to find photo at document
@@ -66,7 +92,27 @@ public static class MessageExtension
     public static async Task<DocumentData> DownloadDocumentFromReply(this Message origin) 
     {
         if (origin.reply_to is not MessageReplyHeader header) throw new ArgumentException("Message is not a reply to another message.", nameof(origin));
-        MessageMedia? media = header?.reply_media;
+        Message replyTo;
+        if (origin.peer_id is PeerChannel channel)
+        {
+            Messages_MessagesBase msgs = await LyainBotApp.Client.Channels_GetMessages(channel.ToInputPeer() as InputPeerChannel, new InputMessageID() { id = header.reply_to_msg_id });
+            if (msgs.Count == 0)
+            {
+                throw new ArgumentException("The replied message does not exist.", nameof(origin));
+            }
+            replyTo = msgs.Messages.First() as Message ?? throw new InvalidOperationException("The replied message is not a valid Message.");
+        }
+        else
+        {
+            Messages_MessagesBase msgs = await LyainBotApp.Client.Messages_GetMessages(new InputMessageReplyTo() { id = origin.id });
+            if (msgs.Count == 0)
+            {
+                throw new ArgumentException("The replied message does not exist.", nameof(origin));
+            }
+            replyTo = msgs.Messages.First() as Message ?? throw new InvalidOperationException("The replied message is not a valid Message.");
+        }
+        
+        MessageMedia? media = replyTo.media;
         if (media is not MessageMediaDocument mdoc || mdoc.document is DocumentEmpty) throw new ArgumentException("The replied message does not contain a valid document.");
         using MemoryStream fileStream = new();
         await LyainBotApp.Client.DownloadFileAsync(mdoc.document as Document, fileStream);

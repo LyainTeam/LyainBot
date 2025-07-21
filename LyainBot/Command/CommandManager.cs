@@ -1,5 +1,6 @@
 using TL;
 using LyainBot.Command.Impls;
+using LyainBot.Extension;
 using WTelegram;
 
 namespace LyainBot.Command;
@@ -35,7 +36,11 @@ public class CommandManager
         if (!messageString.StartsWith(LyainBotApp.ClientConfig.CommandPrefix)) return;
         string[] commandArgs = messageString.Split(" ").Select(arg => arg.Trim()).ToArray();
         string commandName = commandArgs[0][LyainBotApp.ClientConfig.CommandPrefix.Length..].Trim();
-        TryInvokeCommand(commandName, message, LyainBotApp.UpdateManager, LyainBotApp.Client, edit, commandArgs[1..]);
+        new Thread(() =>
+        {
+            TryInvokeCommand(commandName, message, LyainBotApp.UpdateManager, LyainBotApp.Client, edit,
+                commandArgs[1..]);
+        }).Start();
     }
 
     public void RegisterCommand(ICommand command)
@@ -73,6 +78,7 @@ public class CommandManager
         }
         catch (Exception e)
         {
+            message.Edit("An error occurred while executing the command: " + e.Message);
             Console.WriteLine(e);
         }
         return true;

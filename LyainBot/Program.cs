@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Autofac;
 using TL;
@@ -39,58 +40,77 @@ internal static class Program
             LyainBotApp.IsRunning = false;
             Console.WriteLine("Shutting down...");
         };
-
-        LoadPlugins(builder);
-        IContainer container = builder.Build();
-        IEnumerable<IPlugin> plugins = container.Resolve<IEnumerable<IPlugin>>();
         
         // register a custom dependency resolver to resolve dependencies for plugins
         AppDomain.CurrentDomain.AssemblyResolve += (sender, eventArgs) =>
         {
-            string? assemblyName = new AssemblyName(eventArgs.Name).Name;
-            Version? assemblyVersion = new AssemblyName(eventArgs.Name).Version;
-            string libsRootPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Libs", assemblyName);
-            if (!Directory.Exists(libsRootPath)) return null;
+            string assemblyName = new AssemblyName(eventArgs.Name).Name?.ToLower() ?? string.Empty;
+            string libsRootPath = Path.Combine("Libs", assemblyName);
+            if (!Directory.Exists(libsRootPath))
+            {
+                Console.WriteLine("WARN: Libs directory does not exist, cannot resolve assembly.");
+                return null;
+            }
             string[] versions = Directory.GetDirectories(libsRootPath);
-            if (versions.Length == 0) return null;
+            if (versions.Length == 0)
+            {
+                Console.WriteLine($"No versions found for {assemblyName} in {libsRootPath}");
+                return null;
+            }
             string versionPath;
-            if (assemblyVersion == null)
+            string? latestVersion = versions.OrderByDescending(v => new Version(Path.GetFileName(v))).FirstOrDefault();
+            if (latestVersion == null)
             {
-                string? latestVersion = versions.OrderByDescending(v => new Version(Path.GetFileName(v))).FirstOrDefault();
-                if (latestVersion == null) return null;
-                versionPath = Path.Combine(libsRootPath, latestVersion);
+                Console.WriteLine($"No valid version found for {assemblyName} in {libsRootPath}");
+                return null;
             }
-            else
-            {
-                string? nearestVersion = versions
-                    .Select(v => new Version(Path.GetFileName(v)))
-                    .Where(v => v >= assemblyVersion)
-                    .OrderBy(v => v)
-                    .FirstOrDefault()?.ToString();
-                if (nearestVersion == null) return null;
-                versionPath = Path.Combine(libsRootPath, nearestVersion);
-            }
+            versionPath = latestVersion;
             string assembliesPath = Path.Combine(versionPath, "lib");
             string[] netVersions = Directory.GetDirectories(assembliesPath);
-            if (netVersions.Length == 0) return null;
-            string netVersion = netVersions.OrderByDescending(v => v).FirstOrDefault();
-            if (netVersion == null) return null;
-            string assemblyPath = Path.Combine(netVersion, $"{assemblyName}.dll");
-            if (!File.Exists(assemblyPath))
+            if (netVersions.Length == 0)
             {
-                Console.WriteLine($"Assembly {assemblyName} not found in {assemblyPath}");
+                Console.WriteLine($"No .NET versions found in {assembliesPath} for {assemblyName}");
+                return null;
+            }
+            string netVersion = netVersions.OrderBy(v => v).FirstOrDefault();
+            if (netVersion == null)
+            {
+                Console.WriteLine($"No valid .NET version found in {assembliesPath} for {assemblyName}");
+                return null;
+            }
+            // find all .dll files in the netVersion directory
+            string[] assemblyFiles = Directory.GetFiles(netVersion, "*.dll");
+            if (assemblyFiles.Length == 0)
+            {
+                Console.WriteLine($"No assemblies found for {assemblyName} in {netVersion}");
+                return null;
+            }
+            // find the assembly that matches the requested name
+            string? assemblyDll = assemblyFiles.FirstOrDefault(file => Path.GetFileNameWithoutExtension(file).ToLower() == assemblyName);
+            if (string.IsNullOrEmpty(assemblyDll))
+            {
+                Console.WriteLine($"Assembly {assemblyName} not found in {netVersion}");
+                return null;
+            }
+            if (!File.Exists(assemblyDll))
+            {
+                Console.WriteLine($"Assembly {assemblyName} not found in {assemblyDll}");
                 return null;
             }
             try
             {
-                return Assembly.LoadFrom(assemblyPath);
+                return Assembly.LoadFrom(assemblyDll);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to load assembly {assemblyName} from {assemblyPath}: {ex.Message}");
+                Console.WriteLine($"Failed to load assembly {assemblyName} from {assemblyDll}: {ex.Message}");
                 return null;
             }
         };
+        
+        LoadPlugins(builder);
+        IContainer container = builder.Build();
+        IEnumerable<IPlugin> plugins = container.Resolve<IEnumerable<IPlugin>>();
         
         foreach (IPlugin plugin in plugins)
         {
@@ -161,6 +181,9 @@ internal static class Program
         {
             Directory.CreateDirectory(libsPath);
         }
+        string currentRuntime = RuntimeInformation.RuntimeIdentifier.ToLowerInvariant();
+        Console.WriteLine($"Current runtime: {currentRuntime}");
+        
         List<KeyValuePair<string, string>> dependencies = new();
         using JsonDocument doc = JsonDocument.Parse(depsJson);
         if (!doc.RootElement.TryGetProperty("libraries", out JsonElement libraries)) return;
@@ -207,7 +230,12 @@ internal static class Program
                 packageName.Equals("system.security.principal.windows", StringComparison.OrdinalIgnoreCase) || 
                 packageName.Equals("wtelegramclient", StringComparison.OrdinalIgnoreCase) || 
                 packageName.Equals("sixlabors.imagesharp", StringComparison.OrdinalIgnoreCase) ||
-                packageName.StartsWith("nuget.protocol", StringComparison.OrdinalIgnoreCase))
+                packageName.Equals("nuget.protocol", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("nuget.common", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("nuget.configuration", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("nuget.frameworks", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("nuget.packaging", StringComparison.OrdinalIgnoreCase) || 
+                packageName.Equals("nuget.versioning", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -215,7 +243,7 @@ internal static class Program
             string packagePath = Path.Combine(libsPath, packageName, packageVersion, $".nupkg.metadata");
             if (!File.Exists(packagePath))
             {
-                Console.WriteLine($"Downloading {packageName} {packageVersion}...");
+                Console.Write($"Downloading {packageName} {packageVersion}... ");
                 try
                 {
                     PackageIdentity packageIdentity = new(packageName, NuGet.Versioning.NuGetVersion.Parse(packageVersion));
@@ -230,19 +258,35 @@ internal static class Program
                     DownloadResourceResult result = downloadResource.GetDownloadResourceResultAsync(packageIdentity, downloadContext, libsPath, new NullLogger(), CancellationToken.None).Result;
                     if (result.Status != DownloadResourceResultStatus.Available)
                     {
-                        Console.WriteLine($"Failed to download {packageName} {packageVersion}: {result.Status}");
+                        Console.WriteLine($"Failed");
                         continue;
                     }
-                    Console.WriteLine($"Downloaded {packageName} {packageVersion}");
+                    Console.WriteLine($"Done.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to download {packageName} {packageVersion}: {ex.Message}");
+                    Console.WriteLine($"Failed to download: {ex.Message}");
                 }
             }
-            else
+            
+            string runtimeDir = Path.Combine(libsPath, packageName, packageVersion, "runtimes", currentRuntime);
+            if (!Directory.Exists(runtimeDir)) continue;
+            string[] versions = Directory.GetDirectories(Path.Combine(libsPath, packageName, packageVersion, "lib"));
+            string? latestVersion = versions.OrderBy(v => v).FirstOrDefault();
+            if (latestVersion == null)
             {
-                Console.WriteLine($"{packageName} {packageVersion} already exists.");
+                Console.WriteLine($"No versions found for {packageName} {packageVersion}");
+                return;
+            }
+            // copy runtime files to the latest version directory
+            string[] runtimeFiles = Directory.GetFiles(runtimeDir, "*", SearchOption.AllDirectories);
+            foreach (string runtimeFile in runtimeFiles)
+            {
+                string destFile = Path.Combine(latestVersion, Path.GetFileName(runtimeFile));
+                if (!File.Exists(destFile))
+                {
+                    File.Copy(runtimeFile, destFile);
+                }
             }
         }
     }
